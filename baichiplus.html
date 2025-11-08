@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>白痴加一器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation; /* 禁止手机双击缩放 */
+        }
+        body {
+            background-color: #f8f0f9;
+            font-family: "Microsoft YaHei", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+        .title {
+            font-size: 2rem;
+            color: #9370db;
+            text-shadow: 0 2px 3px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .merit-count {
+            font-size: 1.8rem;
+            color: #666;
+            margin-bottom: 30px;
+            background-color: #fff;
+            padding: 8px 20px;
+            border-radius: 30px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+        /* 视频容器（替换原图片容器，适配手机触摸） */
+        .girl-container {
+            position: relative;
+            width: 85vw; /* 占手机宽度85% */
+            max-width: 400px;
+            cursor: pointer;
+            transition: transform 0.08s ease;
+            margin-bottom: 40px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            /* 保持16:9比例，和原图片一致 */
+            aspect-ratio: 16/9;
+        }
+        /* 触摸反馈（手机点击时缩放） */
+        .girl-container:active {
+            transform: scale(0.97);
+        }
+        /* 👇 视频核心设置 */
+        .girl-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 视频自适应容器，不拉伸 */
+            object-position: center; /* 视频居中显示 */
+        }
+        /* 文字动画（视频上方） */
+        .gongde {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            color: #ff69b4;
+            font-weight: bold;
+            opacity: 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.6s ease-out;
+            z-index: 10; /* 层级高于视频 */
+        }
+        .gongde.show {
+            opacity: 1;
+            top: -80px; /* 上升距离（可调整） */
+        }
+        /* 底部控制按钮（适配手机点击） */
+        .control-group {
+            display: flex;
+            gap: 15px;
+            position: fixed;
+            bottom: 30px;
+        }
+        .control-btn {
+            padding: 12px 25px;
+            background-color: #9370db;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            box-shadow: 0 4px 10px rgba(147, 112, 219, 0.3);
+            transition: background-color 0.2s ease;
+        }
+        .control-btn:hover {
+            background-color: #805ad5;
+        }
+        /* 重置按钮样式区分 */
+        #resetBtn {
+            background-color: #ff8fa3;
+        }
+        #resetBtn:hover {
+            background-color: #ff6b8b;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">白痴加一器</h1>
+    <div class="merit-count">当前白痴度：<span id="count">0</span></div>
+    <div class="girl-container" id="girlContainer">
+        <!-- 🔴 重点：视频路径替换处 -->
+        <video class="girl-video" autoplay loop muted playsinline>
+            <!-- 替换src为你的MP4视频路径（本地/网络均可） -->
+            <source src="kemiao.mp4" type="video/mp4">
+            你的浏览器不支持视频播放，请更换浏览器
+        </video>
+        <div class="gongde" id="gongde">白痴+1</div>
+    </div>
+    <div class="control-group">
+        <button class="control-btn" id="soundToggle">开启声音</button>
+    </div>
+
+    <script>
+        // 初始化变量
+        const countElement = document.getElementById("count");
+        const girlContainer = document.getElementById("girlContainer");
+        const gongdeElement = document.getElementById("gongde");
+        const soundToggle = document.getElementById("soundToggle");
+        const resetBtn = document.getElementById("resetBtn");
+        let meritCount = 0;
+        let isSoundOn = false;
+
+        // 👇 音效替换（标注清晰，支持自定义）
+        const playSound = () => {
+            try {
+                // 🔴 重点）
+                const customSound = new Audio("miao.mp3");
+                customSound.volume = 0.6; // 音量调整（0-1之间）
+                customSound.play();
+            } catch (error) {
+                console.log("自定义音效播放失败，使用默认音效");
+                // 内置默认音效
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.type = "sine";
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.4);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.4);
+            }
+        };
+
+        // 点击视频容器触发逻辑
+        girlContainer.addEventListener("click", () => {
+            meritCount++;
+            countElement.textContent = meritCount;
+            // 文字动画
+            gongdeElement.classList.add("show");
+            setTimeout(() => {
+                gongdeElement.classList.remove("show");
+            }, 600);
+            // 播放音效（开启状态下）
+            if (isSoundOn) {
+                playSound();
+            }
+        });
+
+        // 音效开关
+        soundToggle.addEventListener("click", () => {
+            isSoundOn = !isSoundOn;
+            soundToggle.textContent = isSoundOn ? "关闭声音" : "开启声音";
+        });
+
+    </script>
+</body>
+</html>
